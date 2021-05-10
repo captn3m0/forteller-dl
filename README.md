@@ -1,10 +1,12 @@
 # foreteller-dl
 
-Download media from the https://www.foretellergames.com/ store without installing the application.
+Download media from the https://www.foretellergames.com/ store without installing the application. The script behaves the same way as the application, and it can only download media that you will have access to, so please purchase the media from [fortellergames.com](https://www.fortellergames.com) before you run this script.
 
-I didn't like the application UX, so wrote this hacky script instead.
+Tested mainly against "Gloomhaven: Jaws of the Lion".
 
-Tested against "Gloomhaven: Jaws of the Lion", but it does seem to work on others as well, as long as you've bought it from the store.
+## Why?
+
+I didn't like the application UX, so wrote this script instead to download the files. The app stretches the play/pause button on my iPhone SE and it looked very ugly. Plus, I can uninstall the app now and [play the files anywhere](www.defectivebydesign.org). Kudos for Foreteller for having a clean API and no DRM.
 
 ## How to use
 
