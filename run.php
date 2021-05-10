@@ -1,68 +1,137 @@
 <?php
 
-const BASE_URL = 'https://us-central1-forteller-platform.cloudfunctions.net/games/FF2K2f7IRo6VvzacwW3v/containers/';
-const AUDIO_BASE_URL = 'https://us-central1-forteller-platform.cloudfunctions.net/audio/zOoRCBJBRD47XjQAmAkS/';
+if(!file_exists('config.php')) {
+  die("Please create config.php before running this script");
+}
+
+require('config.php');
+
+const GAME_BASE_URL = 'https://us-central1-forteller-platform.cloudfunctions.net/games';
+const AUDIO_BASE_URL = 'https://us-central1-forteller-platform.cloudfunctions.net/audio/';
 const LOGIN_URL = 'https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword';
+const TOKEN_URL = 'https://securetoken.googleapis.com/v1/token?key=';
 const APP_KEY = 'AIzaSyAs2zSk1Xx-yq6pu4GNCqOUPLuCD1HPDYo';
 
-const EMAIL = 'YOUR_EMAIL_GOES_HERE';
-const PASSWORD = 'YOUR_FORETELLER_PASSWORD_GOES_HERE';
+function getRefreshToken() {
+  $curl = curl_init();
+  $body = json_encode(["email"=>EMAIL,"returnSecureToken"=>true,"password"=>PASSWORD]);
+
+  curl_setopt_array($curl, [
+    CURLOPT_URL => "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key=" . APP_KEY,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_ENCODING => "",
+    CURLOPT_MAXREDIRS => 10,
+    CURLOPT_TIMEOUT => 30,
+    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+    CURLOPT_CUSTOMREQUEST => "POST",
+    CURLOPT_HTTPHEADER => [
+      'Content-Type: application/json',
+    ],
+    CURLOPT_POSTFIELDS => $body,
+  ]);
+
+  $response = curl_exec($curl);
+  $err = curl_error($curl);
+
+  curl_close($curl);
+
+  if ($err) {
+    die("cURL Error #:" . $err);
+  }
+  return json_decode($response)->refreshToken;
+}
+
+function getAccessToken($refreshToken){
+  $curl = curl_init();
+  $body = json_encode(["grantType"=>"refresh_token","refreshToken"=>$refreshToken]);
+
+  curl_setopt_array($curl, [
+    CURLOPT_URL => TOKEN_URL . APP_KEY,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_ENCODING => "",
+    CURLOPT_MAXREDIRS => 10,
+    CURLOPT_TIMEOUT => 30,
+    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+    CURLOPT_CUSTOMREQUEST => "POST",
+    CURLOPT_HTTPHEADER => [
+      'Content-Type: application/json',
+    ],
+    CURLOPT_POSTFIELDS => $body,
+  ]);
+
+  $response = curl_exec($curl);
+  $err = curl_error($curl);
+
+  curl_close($curl);
+
+  if ($err) {
+    die("cURL Error #:" . $err);
+  }
+  return json_decode($response)->access_token;
+}
 
 function login() {
-  $body = json_encode(["email"=>EMAIL,"returnSecureToken"=>false,"password"=>PASSWORD]);
-
-  echo $body;exit;
-
-  $ch = curl_init('https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key=' . APP_KEY);
-  curl_setopt_array($ch, array(
-    CURLOPT_POST => TRUE,
-    CURLOPT_RETURNTRANSFER => TRUE,
-    CURLOPT_POSTFIELDS => $body
-  ));
-  $response = curl_exec($ch);
-
-  if($response === false){
-      die(curl_error($ch));
-  }
-  $responseData = json_decode($response, true);
-
-  return $responseData['idToken'];
+  $refreshToken = getRefreshToken();
+  return getAccessToken($refreshToken);
 }
-function request($url, $accept = 'application/json') {
 
+function request($url, $accept = 'application/json') {
   global $jwt;
   $opts = [
     "http" => [
         "method" => "GET",
         "header" => "Accept: $accept\r\n" .
-                  "Authorization: Bearer $jwt\r\n"
+                    "User-Agent: Forteller%20Stage/1593634637 CFNetwork/1237 Darwin/20.4.0\r\n" .
+                    "Authorization: Bearer $jwt\r\n"
     ]
   ];
   $context = stream_context_create($opts);
   return file_get_contents($url, false, $context);
 }
 
-$jwt = login();
-$scenarios = json_decode(file_get_contents('scenarios.json'), true);
+if ($argc<2) {
+  die("Please pass one of the SKUs: ceph_gh ceph_jaws suc_mid1 ceph_fh skg_iso");
+}
 
-foreach ($scenarios as $s) {
-  $sid = $s['id'];
-  $scenarioName = $s['name'];
-  @mkdir($scenarioName, 0777);
-  $itemsUrl = BASE_URL .  $sid . '/items';
+if (!in_array($argv[1], ['ceph_gh','ceph_jaws','suc_mid1','ceph_fh','skg_iso'])) {
+  die("Invalid SKU");
+}
+
+$jwt = login();
+$sku = $argv[1];
+$game = null;
+
+foreach (json_decode(request(GAME_BASE_URL), true) as $game) {
+  if ($game['sku'] == $sku) {
+    break;
+  }
+}
+
+$gameName = $game['name'];
+
+@mkdir($gameName);
+$containerUrl = GAME_BASE_URL . "/" . $game['id'] . "/containers";
+$containers = request($containerUrl);
+
+foreach (json_decode($containers, true) as $c) {
+  $cid = $c['id'];
+  $scenarioName = str_replace('#','', $c['name']);
+  $itemsUrl = $containerUrl .  "/$cid/items";
   $data = json_decode(request($itemsUrl), true);
 
   foreach ($data as $track) {
     $trackName = $track['name'];
-
     $streamUrlParts = explode('/', $track['streamUri']);
-
-    $trackUrl = AUDIO_BASE_URL . $streamUrlParts[3] . '/' . $streamUrlParts[4];
-    $filename = "$scenarioName/$trackName.mp3";
+    $trackUrl = AUDIO_BASE_URL . $streamUrlParts[2] . '/' . $streamUrlParts[3] . '/' . $streamUrlParts[4];
+    $filename = "$gameName/$scenarioName - $trackName.mp3";
     echo "$filename\n";
     if (!file_exists($filename)) {
       $track_data = request($trackUrl, 'audio/mpeg');
-      file_put_contents($filename, $track_data);
+      if($track_data) {
+        file_put_contents($filename, $track_data);
+      } else {
+        die("Failed to download $trackUrl");
+      }
     }
   }
 }
