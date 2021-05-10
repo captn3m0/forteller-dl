@@ -20,6 +20,15 @@ cp config.sample.php config.php
 php run.php {SKU}
 ```
 
+## TODO
+
+The script is functional enough for me, so this will likely never get done. But ideas:
+
+- [ ] Run with Docker
+- [ ] Cleanup code
+- [ ] API Documentation?
+- [ ] Tag the MP3 files as they are saved
+
 ## License
 
 Licensed under the [MIT License](https://nemo.mit-license.org/). See LICENSE file for details.
