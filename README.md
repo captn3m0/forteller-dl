@@ -6,7 +6,7 @@ Tested mainly against "Gloomhaven: Jaws of the Lion".
 
 ## Why?
 
-I didn't like the application UX, so wrote this script instead to download the files. The app stretches the play/pause button on my iPhone SE and it looked very ugly. Plus, I can uninstall the app now and [play the files anywhere](www.defectivebydesign.org). Kudos for Forteller for having a clean API and no DRM.
+I didn't like the application UX, so wrote this script instead to download the files. The app stretches the play/pause button on my iPhone SE and it looked very ugly. Plus, I can uninstall the app now and [play the files anywhere](https://www.defectivebydesign.org). Kudos for Forteller for having a clean API and no DRM.
 
 ## How to use
 
