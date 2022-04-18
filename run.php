@@ -1,10 +1,9 @@
+#!/usr/bin/env php
 <?php
 
-if(!file_exists('config.php')) {
-  die("Please create config.php before running this script");
+if(!isset($_ENV['FORTELLER_EMAIL']) || !isset($_ENV['FORTELLER_PASSWORD'])) {
+  die("Please set FORTELLER_EMAIL and FORTELLER_PASSWORD in the environment variables");
 }
-
-require('config.php');
 
 const GAME_BASE_URL = 'https://us-central1-forteller-platform.cloudfunctions.net/games';
 const AUDIO_BASE_URL = 'https://us-central1-forteller-platform.cloudfunctions.net/audio/';
@@ -14,7 +13,7 @@ const APP_KEY = 'AIzaSyAs2zSk1Xx-yq6pu4GNCqOUPLuCD1HPDYo';
 
 function getRefreshToken() {
   $curl = curl_init();
-  $body = json_encode(["email"=>EMAIL,"returnSecureToken"=>true,"password"=>PASSWORD]);
+  $body = json_encode(["email"=>$_ENV['FORTELLER_EMAIL'],"returnSecureToken"=>true,"password"=>$_ENV['FORTELLER_PASSWORD']]);
 
   curl_setopt_array($curl, [
     CURLOPT_URL => "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key=" . APP_KEY,
@@ -97,6 +96,13 @@ if (!in_array($argv[1], ['ceph_gh','ceph_jaws','suc_mid1','ceph_fh','skg_iso']))
   die("Invalid SKU");
 }
 
+$basedir = getcwd();
+if (isset($argv[2])) {
+  @mkdir($argv[2]);
+  $basedir = $argv[2];
+  echo("Saving files in $basedir\n");
+}
+
 $jwt = login();
 $sku = $argv[1];
 $game = null;
@@ -109,7 +115,7 @@ foreach (json_decode(request(GAME_BASE_URL), true) as $game) {
 
 $gameName = $game['name'];
 
-@mkdir($gameName);
+@mkdir("$basedir/$gameName");
 $containerUrl = GAME_BASE_URL . "/" . $game['id'] . "/containers";
 $containers = request($containerUrl);
 
@@ -123,7 +129,7 @@ foreach (json_decode($containers, true) as $c) {
     $trackName = $track['name'];
     $streamUrlParts = explode('/', $track['streamUri']);
     $trackUrl = AUDIO_BASE_URL . $streamUrlParts[2] . '/' . $streamUrlParts[3] . '/' . $streamUrlParts[4];
-    $filename = "$gameName/$scenarioName - $trackName.mp3";
+    $filename = "$basedir/$gameName/$scenarioName - $trackName.mp3";
     echo "$filename\n";
     if (!file_exists($filename)) {
       $track_data = request($trackUrl, 'audio/mpeg');

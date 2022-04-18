@@ -1,5 +1,5 @@
-FROM php:8-slim
+FROM php:8-alpine
 
-COPY *.php /
+COPY *.php /src/
 
-ENTRYPOINT ["/usr/bin/php", "/src/run.php"]
+ENTRYPOINT ["/src/run.php"]
