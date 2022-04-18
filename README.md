@@ -16,16 +16,32 @@ First configure your credentials in the `.env` file.
 
 Edit the .env file with your correct credentials.
 
+## Getting your SKU
+
+The SKU is the product code for each of the Forteller Titles. This is required for downloading the correct title.
+This script authenticates using your credentials, so you can only download titles you have purchased already.
+
+|SKU|Game|
+---|---
+`raven_aab`|[Above and Below](https://www.fortellergames.com/games/aboveandbelow)
+`ceph_gh`|[Gloomhaven](https://www.fortellergames.com/games/gloomhaven)
+`ceph_jaws`|[Jaws of the Lion](https://www.fortellergames.com/games/jawsofthelion)
+`suc_mid1`|[Middara: Act 1](https://www.fortellergames.com/games/middara)
+`ceph_fh`|[Frosthaven](https://www.fortellergames.com/games/frosthaven)
+`skg_iso`|[The Isofarian Guard](https://www.fortellergames.com/games/theisofarianguard)
+
+In the commands that follow, please replace SKU with the correct SKU from the left column.
+
 ### Running using Docker
 
 ```sh
 # Set SKU to one of `ceph_gh`,`ceph_jaws`,`suc_mid1`,`ceph_fh`,`skg_iso`
-docker run -it --init --volume "$HOME/Downloads:/downloads" --env-file .env ghcr.io/captn3m0/forteller-dl:main [SKU] /downloads
+docker run -it --init --volume "$HOME/Downloads:/downloads" --env-file .env ghcr.io/captn3m0/forteller-dl:main SKU /downloads
 ```
 
 ### Running using local PHP
 
-You'll need php, php-curl installed, and replace {SKU} with a valid SKU (One of `ceph_gh`,`ceph_jaws`,`suc_mid1`,`ceph_fh`,`skg_iso`, but not all are available right now).
+You'll need php, php-curl installed, and replace {SKU} with a valid SKU
 
 ```
 git clone https://github.com/captn3m0/forteller-dl.git
@@ -33,7 +49,7 @@ cd forteller-dl
 set -a
 source .env
 set +a
-php run.php {SKU} [/optional/path/to/output/dir]
+php run.php SKU [/optional/path/to/output/dir]
 ```
 
 ## TODO
