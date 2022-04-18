@@ -20,7 +20,7 @@ Edit the .env file with your correct credentials.
 
 ```sh
 # Set SKU to one of `ceph_gh`,`ceph_jaws`,`suc_mid1`,`ceph_fh`,`skg_iso`
-docker run -it --init --volume "$HOME/Downloads:/downloads" --env-file .env ghcr.io/captn3m0/forteller-dl [SKU] /downloads
+docker run -it --init --volume "$HOME/Downloads:/downloads" --env-file .env ghcr.io/captn3m0/forteller-dl:main [SKU] /downloads
 ```
 
 ### Running using local PHP
