@@ -2,7 +2,7 @@
 <?php
 
 if(!isset($_ENV['FORTELLER_EMAIL']) || !isset($_ENV['FORTELLER_PASSWORD'])) {
-  die("Please set FORTELLER_EMAIL and FORTELLER_PASSWORD in the environment variables");
+  die("Please set FORTELLER_EMAIL and FORTELLER_PASSWORD in the environment variables.\n");
 }
 
 const GAME_BASE_URL = 'https://us-central1-forteller-platform.cloudfunctions.net/games';
@@ -11,61 +11,65 @@ const LOGIN_URL = 'https://www.googleapis.com/identitytoolkit/v3/relyingparty/ve
 const TOKEN_URL = 'https://securetoken.googleapis.com/v1/token?key=';
 const APP_KEY = 'AIzaSyAs2zSk1Xx-yq6pu4GNCqOUPLuCD1HPDYo';
 
+function doCurl($url, $type, $header=[], $body="") {
+    $handle = curl_init();
+    curl_setopt($handle, CURLOPT_URL, $url);
+    curl_setopt($handle, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($handle, CURLOPT_CUSTOMREQUEST, $type);
+    curl_setopt($handle, CURLOPT_HEADER, true);
+    curl_setopt($handle, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($handle, CURLOPT_HTTPHEADER, $header);
+    curl_setopt($handle, CURLOPT_POSTFIELDS, $body);
+
+    $response = curl_exec($handle);
+    $hlength  = curl_getinfo($handle, CURLINFO_HEADER_SIZE);
+    $httpCode = curl_getinfo($handle, CURLINFO_HTTP_CODE);
+    $body     = substr($response, $hlength);
+
+    curl_close($handle);
+
+    // If HTTP response is not 200, throw exception
+    if ($httpCode != 200) {
+        throw new Exception("$httpCode: $body");
+    }
+
+    return $body;
+}
+
 function getRefreshToken() {
-  $curl = curl_init();
-  $body = json_encode(["email"=>$_ENV['FORTELLER_EMAIL'],"returnSecureToken"=>true,"password"=>$_ENV['FORTELLER_PASSWORD']]);
+  $response = doCurl(
+    LOGIN_URL . "?key=" . APP_KEY,
+    "POST",
+    ['Content-Type: application/json'],
+    json_encode([
+      "email" => $_ENV['FORTELLER_EMAIL'],
+      "returnSecureToken" => true,
+      "password"=> $_ENV['FORTELLER_PASSWORD']
+    ])
+  );
 
-  curl_setopt_array($curl, [
-    CURLOPT_URL => "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key=" . APP_KEY,
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_ENCODING => "",
-    CURLOPT_MAXREDIRS => 10,
-    CURLOPT_TIMEOUT => 30,
-    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-    CURLOPT_CUSTOMREQUEST => "POST",
-    CURLOPT_HTTPHEADER => [
-      'Content-Type: application/json',
-    ],
-    CURLOPT_POSTFIELDS => $body,
-  ]);
-
-  $response = curl_exec($curl);
-  $err = curl_error($curl);
-
-  curl_close($curl);
-
-  if ($err) {
-    die("cURL Error #:" . $err);
+  if (!$response) {
+    die("ERROR: Recieved empty refresh token.\n");
   }
+
   return json_decode($response)->refreshToken;
 }
 
 function getAccessToken($refreshToken){
-  $curl = curl_init();
-  $body = json_encode(["grantType"=>"refresh_token","refreshToken"=>$refreshToken]);
+  $response = doCurl(
+    TOKEN_URL . APP_KEY,
+    'POST',
+    ['Content-Type: application/json'],
+    json_encode([
+      "grantType" => "refresh_token",
+      "refreshToken" => $refreshToken]
+    )
+  );
 
-  curl_setopt_array($curl, [
-    CURLOPT_URL => TOKEN_URL . APP_KEY,
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_ENCODING => "",
-    CURLOPT_MAXREDIRS => 10,
-    CURLOPT_TIMEOUT => 30,
-    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-    CURLOPT_CUSTOMREQUEST => "POST",
-    CURLOPT_HTTPHEADER => [
-      'Content-Type: application/json',
-    ],
-    CURLOPT_POSTFIELDS => $body,
-  ]);
-
-  $response = curl_exec($curl);
-  $err = curl_error($curl);
-
-  curl_close($curl);
-
-  if ($err) {
-    die("cURL Error #:" . $err);
+  if (!$response) {
+    die("ERROR: Recieved empty access token.\n");
   }
+
   return json_decode($response)->access_token;
 }
 
@@ -76,17 +80,21 @@ function login() {
 
 function request($url, $accept = 'application/json') {
   global $jwt;
-  $opts = [
-    "http" => [
-        "method" => "GET",
-        "header" => "Accept: $accept\r\n" .
-                    "User-Agent: Forteller%20Stage/1593634637 CFNetwork/1237 Darwin/20.4.0\r\n" .
-                    "Authorization: Bearer $jwt\r\n"
+
+  return doCurl(
+    $url,
+    'GET',
+    [
+        "Accept: $accept",
+        "User-Agent: Forteller%20Stage/1593634637 CFNetwork/1237 Darwin/20.4.0",
+        "Authorization: Bearer $jwt"
     ]
-  ];
-  $context = stream_context_create($opts);
-  return file_get_contents($url, false, $context);
+  );
 }
+
+// ---------------------------------------
+// Main Logic
+// ---------------------------------------
 
 if ($argc<2) {
   die("Please pass one of the SKUs: ceph_gh ceph_jaws suc_mid1 ceph_fh skg_iso");
@@ -131,12 +139,14 @@ foreach (json_decode($containers, true) as $c) {
     $trackUrl = AUDIO_BASE_URL . $streamUrlParts[2] . '/' . $streamUrlParts[3] . '/' . $streamUrlParts[4];
     $filename = "$basedir/$gameName/$scenarioName - $trackName.mp3";
     echo "$filename\n";
+
     if (!file_exists($filename)) {
       $track_data = request($trackUrl, 'audio/mpeg');
+
       if($track_data) {
         file_put_contents($filename, $track_data);
       } else {
-        die("Failed to download $trackUrl");
+        die("Failed to download $trackUrl\n");
       }
     }
   }
