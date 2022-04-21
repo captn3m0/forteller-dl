@@ -1,7 +1,7 @@
 #!/usr/bin/env php
 <?php
 
-if(!isset($_ENV['FORTELLER_EMAIL']) || !isset($_ENV['FORTELLER_PASSWORD'])) {
+if(getenv('FORTELLER_EMAIL') === false || getenv('FORTELLER_PASSWORD') === false) {
   die("Please set FORTELLER_EMAIL and FORTELLER_PASSWORD in the environment variables.\n");
 }
 
@@ -42,9 +42,9 @@ function getRefreshToken() {
     "POST",
     ['Content-Type: application/json'],
     json_encode([
-      "email" => $_ENV['FORTELLER_EMAIL'],
+      "email" => getenv('FORTELLER_EMAIL'),
       "returnSecureToken" => true,
-      "password"=> $_ENV['FORTELLER_PASSWORD']
+      "password"=> getenv('FORTELLER_PASSWORD')
     ])
   );
 
@@ -80,6 +80,7 @@ function login() {
 
 function request($url, $accept = 'application/json') {
   global $jwt;
+  echo "Fetching $url\n";
 
   return doCurl(
     $url,
@@ -112,6 +113,10 @@ if (isset($argv[2])) {
 }
 
 $jwt = login();
+// Print the JWT token without the Signature
+print_r(array_map(function($x) {
+  return base64_decode($x);
+}, array_slice(explode('.', $jwt), 0, 2)));
 $sku = $argv[1];
 $game = null;
 
