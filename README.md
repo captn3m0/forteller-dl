@@ -34,9 +34,20 @@ In the commands that follow, please replace SKU with the correct SKU from the le
 
 ### Running using Docker
 
+Make sure you have configured your credentials as per the above.
+
+#### Login to the GitHub Container Registry:
+
+1. Create a new [Personal Access Token](https://github.com/settings/tokens/new?scopes=read:packages&description=Docker%20Login) with the `read:packages` scope.
+2. Run `docker login ghcr.io`. Put your GitHub username as the username, and the token you generated above as the password.
+
+#### Downloading files using Docker
+
+Change `$HOME/Downloads` to the directory where you'd like the files to be written. A directory is automatically created here for whichever SKU you download.
+
 ```sh
 # Set SKU to one of `ceph_gh`,`ceph_jaws`,`suc_mid1`,`ceph_fh`,`skg_iso`
-docker run -it --init --volume "$HOME/Downloads:/downloads" --env-file .env ghcr.io/captn3m0/forteller-dl:main SKU /downloads
+docker run -it --init --user $UID --volume "$HOME/Downloads:/downloads" --env-file .env ghcr.io/captn3m0/forteller-dl:main SKU /downloads
 ```
 
 ### Running using local PHP
